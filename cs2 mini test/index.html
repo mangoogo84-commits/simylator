@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>CS2 Simulator Pro Max</title>
+    <style>
+        :root { --bg: #121316; --pan: #1c1e24; --acc: #de9b35; --txt: #e2e8f0; --r-blue: #4b69ff; --r-purple: #8847ff; --r-pink: #d32ce6; --r-red: #eb4b4b; --r-gold: #ffae00; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; user-select: none; }
+        body { background: var(--bg); color: var(--txt); padding: 15px; overflow-x: hidden; }
+        header { display: flex; justify-content: space-between; align-items: center; background: var(--pan); padding: 12px 20px; border-radius: 10px; border: 1px solid #2d3139; margin-bottom: 25px; }
+        .logo { font-size: 22px; font-weight: bold; color: #fff; }
+        .logo span { color: var(--acc); }
+        .balance-box { display: flex; align-items: center; gap: 12px; }
+        .balance { font-size: 18px; font-weight: 600; color: #4ade80; }
+        .btn { background: var(--acc); color: #000; border: none; padding: 7px 14px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.2s; }
+        .btn:hover { transform: scale(1.02); opacity: 0.9; }
+        .btn:disabled { background: #4a4d56; cursor: not-allowed; opacity: 0.5; }
+        .btn-sell { background: var(--r-red); color: white; }
+        .btn-keep { background: white; color: black; }
+        .cases-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .case-card { background: var(--pan); border: 1px solid #2d3139; border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .case-card.active { border-color: var(--acc); box-shadow: 0 0 10px rgba(222, 155, 53, 0.2); }
+        .case-card img { width: 90px; height: 70px; object-fit: contain; }
+        .case-price { color: #4ade80; font-weight: bold; margin-top: 5px; }
+        .roulette-wrapper { background: var(--pan); border: 1px solid #2d3139; border-radius: 10px; padding: 25px; margin-bottom: 25px; display: flex; flex-direction: column; align-items: center; }
+        .roulette-viewport { width: 100%; max-width: 700px; height: 110px; overflow: hidden; position: relative; border-radius: 6px; background: #15171c; border: 2px solid #252830; }
+        .roulette-viewport::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #eb4b4b; z-index: 10; box-shadow: 0 0 8px #eb4b4b; transform: translateX(-50%); }
+        .roulette-track { display: flex; width: max-content; height: 100%; }
+        .roulette-item { width: 120px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; border-right: 1px solid #1c1e24; position: relative; background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.3) 100%); }
+        .roulette-item img { width: 80px; height: 55px; object-fit: contain; }
+        .item-name { font-size: 10px; text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+        .roulette-item::after, .inv-item::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; }
+        .rarity-blue::after { background: var(--r-blue); }
+        .rarity-purple::after { background: var(--r-purple); }
+        .rarity-pink::after { background: var(--r-pink); }
+        .rarity-red::after { background: var(--r-red); }
+        .rarity-gold::after { background: var(--r-gold); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: 0.3s; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-card { background: var(--pan); border: 2px solid #2d3139; border-radius: 12px; width: 340px; padding: 25px; text-align: center; transform: scale(0.8); transition: 0.3s; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .modal-overlay.active .modal-card { transform: scale(1); }
+        .modal-card h2 { margin-bottom: 12px; font-size: 20px; }
+        .modal-card img { width: 150px; height: 110px; object-fit: contain; margin: 10px 0; animation: floatAnim 3s ease-in-out infinite; }
+        .modal-price { font-size: 22px; color: #4ade80; font-weight: bold; margin-bottom: 20px; }
+        .modal-btns { display: flex; gap: 10px; justify-content: center; }
+        .inv-modal-card { width: 90%; max-width: 600px; height: 80vh; display: flex; flex-direction: column; text-align: left; }
+        .inv-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #2d3139; padding-bottom: 10px; }
+        .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        .inv-item { background: #15171c; border: 1px solid #252830; border-radius: 6px; padding: 8px; text-align: center; position: relative; cursor: pointer; transition: 0.2s; height: 95px; }
+        .inv-item:hover { transform: translateY(-3px); border-color: #555; }
+        .inv-item img { width: 100%; height: 50px; object-fit: contain; }
+        @keyframes floatAnim { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 999; }
+    </style>
+</head>
+<body>
+    <canvas id="confetti-canvas"></canvas>
+    <div class="modal-overlay" id="win-modal">
+        <div class="modal-card">
+            <h2>Выпал предмет!</h2>
+            <div id="modal-item-name" style="font-weight:bold; font-size:14px; margin-bottom:5px;">Скин</div>
+            <img id="modal-img" src="" alt="">
+            <div class="modal-price" id="modal-price">$0</div>
+            <div class="modal-btns">
+                <button class="btn btn-keep" onclick="closeWinModal(false)">В инвентарь</button>
+                <button class="btn btn-sell" id="modal-sell-btn" onclick="closeWinModal(true)">Продать</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="inv-modal" onclick="closeInvModalOuter(event)">
+        <div class="modal-card inv-modal-card">
+            <div class="inv-modal-header">
+                <h2>🎒 Ваш инвентарь (<span id="inv-count">0</span>)</h2>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-sell" style="padding:5px 10px; font-size:12px;" onclick="sellAllSkins()">Продать все</button>
+                    <button class="btn btn-keep" style="padding:5px 10px; font-size:12px;" onclick="closeInvModal()">Закрыть</button>
+                </div>
+            </div>
+            <div class="inventory-grid" id="inv-grid"></div>
+        </div>
+    </div>
+    <header>
+        <div class="logo">CS2<span>MINI</span></div>
+        <div class="balance-box">
+            <button class="btn" style="background:#e2e8f0; color:#000;" onclick="openInvModal()">🎒 Мой инвентарь</button>
+            <div class="balance">Баланс: $<span id="balance-val">1000</span></div>
+            <button class="btn" id="deposit-btn" onclick="addFunds()">+ Пополнить</button>
+        </div>
+    </header>
+    <div class="cases-container" id="cases-list"></div>
+    <div class="roulette-wrapper">
+        <div class="roulette-viewport"><div class="roulette-track" id="roll-track"></div></div>
+        <div style="margin-top:15px;"><button class="btn" id="open-btn" style="padding:10px 25px;" onclick="openCase()">Открыть кейс</button></div>
+    </div>
+    <script>
+        const rarities = {
+            blue: { name: 'Армейское', class: 'rarity-blue', minPrice: 10, maxPrice: 35 },
+            purple: { name: 'Запрещенное', class: 'rarity-purple', minPrice: 40, maxPrice: 120 },
+            pink: { name: 'Засекреченное', class: 'rarity-pink', minPrice: 150, maxPrice: 450 },
+            red: { name: 'Тайное', class: 'rarity-red', minPrice: 500, maxPrice: 1800 },
+            gold: { name: 'Нож', class: 'rarity-gold', minPrice: 2000 }
+        };
+
+        const casesData = [
+            {
+                id: 1, name: 'Кейс #1', price: 100, maxGoldPrice: 5000, img: 'case.png',
+                skins: [
+                    { name: 'USP-S | Проводник', img: 'c1_usp.png', rarity: rarities.blue },
+                    { name: 'P250 | Валентность', img: 'c1_p250.png', rarity: rarities.blue },
+                    { name: 'Glock-18 | Горелка Бунзена', img: 'c1_glock.png', rarity: rarities.blue },
+                    { name: 'M4A4 | Магний', img: 'c1_m4a4.png', rarity: rarities.purple },
+                    { name: 'M4A1-S | Взгляд в прошлое', img: 'c1_m4a1.png', rarity: rarities.purple },
+                    { name: 'Desert Eagle | Оксид алюминия', img: 'c1_deagle.png', rarity: rarities.purple },
+                    { name: 'AK-47 | Элитное снаряжение', img: 'c1_ak.png', rarity: rarities.pink },
+                    { name: 'AWP | Лапки', img: 'c1_awp.png', rarity: rarities.pink },
+                    { name: 'AK-47 | Пожелание на ночь', img: 'c1_ak_covert.png', rarity: rarities.red },
+                    { name: 'AWP | Хроматическая аберрация', img: 'c1_awp_covert.png', rarity: rarities.red },
+                    { name: 'Нож-бабочка | Градиент', img: 'c1_knife2.png', rarity: rarities.gold },
+                    { name: 'Нож-бабочка | Кровавая паутина', img: 'c1_knife1.png', rarity: rarities.gold }
+                ]
+            },
+            {
+                id: 2, name: 'Кейс #2', price: 200, maxGoldPrice: 7000, img: 'case2.png',
+                skins: [
+                    { name: 'USP-S | Крутящий момент', img: 'c2_usp.png', rarity: rarities.blue },
+                    { name: 'P250 | Охотник', img: 'c2_p250.png', rarity: rarities.blue },
+                    { name: 'Glock-18 | Оксид алюминия', img: 'c2_glock.png', rarity: rarities.blue },
+                    { name: 'M4A4 | Преобразователь', img: 'c2_m4a4.png', rarity: rarities.purple },
+                    { name: 'M4A1-S | Ночной кошмар', img: 'c2_m4a1.png', rarity: rarities.purple },
+                    { name: 'Desert Eagle | Рельсотрон', img: 'c2_deagle.png', rarity: rarities.purple },
+                    { name: 'AK-47 | Ледяной уголь', img: 'c2_ak.png', rarity: rarities.pink },
+                    { name: 'AWP | Ахерон', img: 'c2_awp.png', rarity: rarities.pink },
+                    { name: 'AK-47 | Неоновая революция', img: 'c2_ak_covert.png', rarity: rarities.red },
+                    { name: 'AWP | Неонуар', img: 'c2_awp_covert.png', rarity: rarities.red },
+                    { name: 'Стилет | Убийство', img: 'c2_knife2.png', rarity: rarities.gold },
+                    { name: 'Нож-бабочка | Кровавая паутина', img: 'c2_knife1.png', rarity: rarities.gold }
+                ]
+            },
+            {
+                id: 3, name: 'Кейс #3', price: 300, maxGoldPrice: 10000, img: 'case3.png',
+                skins: [
+                    { name: 'USP-S | Проводник', img: 'c3_usp.png', rarity: rarities.blue },
+                    { name: 'P250 | Рентген', img: 'c3_p250.png', rarity: rarities.blue },
+                    { name: 'Glock-18 | Синяя трещина', img: 'c3_glock.png', rarity: rarities.blue },
+                    { name: 'M4A4 | Грифон', img: 'c3_m4a4.png', rarity: rarities.purple },
+                    { name: 'M4A1-S | Взгляд в прошлое', img: 'c3_m4a1.png', rarity: rarities.purple },
+                    { name: 'Desert Eagle | Оксид алюминия', img: 'c3_deagle.png', rarity: rarities.purple },
+                    { name: 'AK-47 | Элитное снаряжение', img: 'c3_ak.png', rarity: rarities.pink },
+                    { name: 'AWP | Капилляр', img: 'c3_awp.png', rarity: rarities.pink },
+                    { name: 'AK-47 | Пожелание на ночь', img: 'c3_ak_covert.png', rarity: rarities.red },
+                    { name: 'AWP | Дикое пламя', img: 'c3_awp_covert.png', rarity: rarities.red },
+                    { name: 'M9 Штык-нож | Гамма-волны', img: 'c3_knife2.png', rarity: rarities.gold },
+                    { name: 'Стилет | Убийство', img: 'c3_knife1.png', rarity: rarities.gold }
+                ]
+            },
+            {
+                id: 4, name: 'Кейс #4', price: 450, maxGoldPrice: 13000, img: 'case4.png',
+                skins: [
+                    { name: 'USP-S | Закрученный', img: 'c4_usp.png', rarity: rarities.blue },
+                    { name: 'P250 | Валентность', img: 'c4_p250.png', rarity: rarities.blue },
+                    { name: 'Glock-18 | Жертва', img: 'c4_glock.png', rarity: rarities.blue },
+                    { name: 'M4A4 | Магний', img: 'c4_m4a4.png', rarity: rarities.purple },
+                    { name: 'M4A1-S | Взгляд в прошлое', img: 'c4_m4a1.png', rarity: rarities.purple },
+                    { name: 'Desert Eagle | Бронзовая декорация', img: 'c4_deagle.png', rarity: rarities.purple },
+                    { name: 'AK-47 | Изумрудные завитки', img: 'c4_ak.png', rarity: rarities.pink },
+                    { name: 'AWP | Капилляр', img: 'c4_awp.png', rarity: rarities.pink },
+                    { name: 'AK-47 | Пожелание на ночь', img: 'c4_ak_covert.png', rarity: rarities.red },
+                    { name: 'AWP | Распространение', img: 'c4_awp_covert.png', rarity: rarities.red },
+                    { name: 'Складной нож | Ночь', img: 'c4_knife2.png', rarity: rarities.gold },
+                    { name: 'Охотничий нож | Пиксельный камуфляж', img: 'c4_knife1.png', rarity: rarities.gold }
+                ]
+            },
+            {
+                id: 5, name: 'Кейс #5', price: 5000, maxGoldPrice: 20000, img: 'case5.png',
+                skins: [
+                    { name: 'USP-S | Проводник', img: 'c5_usp.png', rarity: rarities.blue },
+                    { name: 'P250 | Лесной камуфляж', img: 'c5_p250.png', rarity: rarities.blue },
+                    { name: 'Glock-18 | Подземка', img: 'c5_glock.png', rarity: rarities.blue },
+                    { name: 'M4A4 | Живой голем', img: 'c5_m4a4.png', rarity: rarities.purple },
+                    { name: 'M4A1-S | Стеклянный дом', img: 'c5_m4a1.png', rarity: rarities.purple },
+                    { name: 'Desert Eagle | Оксид алюминия', img: 'c5_deagle.png', rarity: rarities.purple },
+                    { name: 'AK-47 | Сланцы', img: 'c5_ak.png', rarity: rarities.pink },
+                    { name: 'AWP | Лапки', img: 'c5_awp.png', rarity: rarities.pink },
+                    { name: 'AK-47 | Пожелание на ночь', img: 'c5_ak_covert.png', rarity: rarities.red },
+                    { name: 'AWP | Гунгнир', img: 'c5_awp_covert.png', rarity: rarities.red },
+                    { name: 'Нож Наваха | Градиент', img: 'c5_knife2.png', rarity: rarities.gold },
+                    { name: 'Паракорд-нож | Кровавая паутина', img: 'c5_knife1.png', rarity: rarities.gold }
+                ]
+            }
+        ];
+
+        let balance = parseInt(localStorage.getItem('cs_bal')) || 2000;
+        let inventory = JSON.parse(localStorage.getItem('cs_inv')) || [];
+        let currentCaseIdx = 0, isRolling = false, currentWonSkin = null;
+
+        const casesList = document.getElementById('cases-list'), track = document.getElementById('roll-track'), openBtn = document.getElementById('open-btn');
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, type, duration) {
+            try {
+                let osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.type = type; osc.frequency.value = freq; gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + duration);
+            } catch(e){}
+        }
+
+        function init() {
+            casesList.innerHTML = '';
+            casesData.forEach((c, idx) => {
+                casesList.innerHTML += `
+                    <div class="case-card ${idx === currentCaseIdx ? 'active' : ''}" onclick="selectCase(${idx})">
+                        <img src="${c.img}" onerror="this.src='case.png'">
+                        <div style="font-size:12px;margin-top:5px;">${c.name}</div>
+                        <div class="case-price">$${c.price}</div>
+                    </div>`;
+            });
+            updateBalanceUI(); generateFakeTrack();
+        }
+
+        function selectCase(idx) { if (isRolling) return; currentCaseIdx = idx; document.querySelectorAll('.case-card').forEach((el, i) => el.classList.toggle('active', i === idx)); generateFakeTrack(); }
+
+        function updateBalanceUI() {
+            document.getElementById('balance-val').innerText = balance;
+            localStorage.setItem('cs_bal', balance);
+            if (balance < 100) { balance += 250; setTimeout(() => { playTone(500, 'square', 0.3); updateBalanceUI(); }, 1000); }
+            document.getElementById('deposit-btn').disabled = (balance >= 1000);
+        }
+
+        function addFunds() { if (balance >= 1000) return; balance = Math.min(1000, balance + 500); updateBalanceUI(); playTone(300, 'sine', 0.1); }
+
+        function generateFakeTrack() {
+            track.style.transition = 'none'; track.style.transform = 'translateX(0)'; track.innerHTML = '';
+            const skins = casesData[currentCaseIdx].skins;
+            for (let i = 0; i < 40; i++) track.appendChild(createItemNode(skins[Math.floor(Math.random() * skins.length)]));
+        }
+
+        function createItemNode(skin) {
+            const el = document.createElement('div'); el.className = `roulette-item ${skin.rarity.class}`;
+            el.innerHTML = `<img src="${skin.img}" onerror="this.src='c1_usp.png'"><div class="item-name">${skin.name}</div>`;
+            return el;
+        }
+
+        function openCase() {
+            const activeCase = casesData[currentCaseIdx];
+            if (balance < activeCase.price || isRolling) return;
+            balance -= activeCase.price; updateBalanceUI(); isRolling = true; openBtn.disabled = true;
+            const roll = Math.random() * 100; let targetRarity;
+            if (roll < 65) targetRarity = rarities.blue;
+            else if (roll < 85) targetRarity = rarities.purple;
+            else if (roll < 95) targetRarity = rarities.pink;
+            else if (roll < 99) targetRarity = rarities.red;
+            else targetRarity = rarities.gold;
+            const availableSkins = activeCase.skins.filter(s => s.rarity === targetRarity);
+            const wonSkin = JSON.parse(JSON.stringify(availableSkins[Math.floor(Math.random() * availableSkins.length)] || activeCase.skins));
+
+            if (targetRarity === rarities.gold) {
+                wonSkin.price = Math.floor(Math.random() * (activeCase.maxGoldPrice - rarities.gold.minPrice + 1)) + rarities.gold.minPrice;
+            } else {
+                wonSkin.price = Math.floor(Math.random() * (targetRarity.maxPrice - targetRarity.minPrice + 1)) + targetRarity.minPrice;
+            }
+
+            wonSkin.id = Date.now(); currentWonSkin = wonSkin;
+            track.style.transition = 'none'; track.style.transform = 'translateX(0)'; track.innerHTML = '';
+            for (let i = 0; i < 45; i++) {
+                if (i === 35) track.appendChild(createItemNode(wonSkin));
+                else track.appendChild(createItemNode(activeCase.skins[Math.floor(Math.random() * activeCase.skins.length)]));
+            }
+            let t = 0;
+            let interval = setInterval(() => { if(t < 3500) { playTone(150, 'triangle', 0.05); t += 100; } else clearInterval(interval); }, 100);
+            setTimeout(() => {
+                const itemWidth = 121, viewportWidth = document.querySelector('.roulette-viewport').offsetWidth;
+                track.style.transition = 'transform 4s cubic-bezier(0.1, 0.6, 0.1, 1)';
+                track.style.transform = `translateX(${- (35 * itemWidth) + ((viewportWidth / 2) - (itemWidth / 2))}px)`;
+            }, 50);
+            setTimeout(() => {
+                isRolling = false; openBtn.disabled = false;
+                document.getElementById('modal-item-name').innerText = wonSkin.name;
+                document.getElementById('modal-img').src = wonSkin.img;
+                document.getElementById('modal-price').innerText = `$${wonSkin.price}`;
+                document.getElementById('win-modal').classList.add('active');
+                if (wonSkin.rarity === rarities.red || wonSkin.rarity === rarities.gold) { triggerConfetti(); playTone(600, 'sine', 0.5); }
+                else playTone(400, 'sine', 0.2);
+            }, 4100);
+        }
+
+        function closeWinModal(sell) {
+            document.getElementById('win-modal').classList.remove('active');
+            if (sell) { balance += currentWonSkin.price; updateBalanceUI(); playTone(500, 'sine', 0.1); }
+            else { inventory.push(currentWonSkin); saveAndRenderInventory(); }
+            generateFakeTrack();
+        }
+
+        function openInvModal() { document.getElementById('inv-modal').classList.add('active'); renderInventoryUI(); }
+        function closeInvModal() { document.getElementById('inv-modal').classList.remove('active'); }
+        function closeInvModalOuter(e) { if(e.target.id === 'inv-modal') closeInvModal(); }
+
+        function saveAndRenderInventory() {
+            localStorage.setItem('cs_inv', JSON.stringify(inventory));
+            renderInventoryUI();
+        }
+
+        function renderInventoryUI() {
+            document.getElementById('inv-count').innerText = inventory.length;
+            const grid = document.getElementById('inv-grid'); grid.innerHTML = '';
+            inventory.forEach(skin => {
+                const item = document.createElement('div'); item.className = `inv-item ${skin.rarity.class}`;
+                item.innerHTML = `<img src="${skin.img}" onerror="this.src='c1_usp.png'"><div style="font-size:10px;font-weight:bold;margin-top:4px;">$${skin.price}</div><div style="font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#aaa;">${skin.name}</div>`;
+                item.onclick = () => { balance += skin.price; inventory = inventory.filter(i => i.id !== skin.id); updateBalanceUI(); saveAndRenderInventory(); playTone(450, 'sine', 0.08); };
+                grid.appendChild(item);
+            });
+        }
+        function sellAllSkins() { inventory.forEach(s => balance += s.price); inventory = []; updateBalanceUI(); saveAndRenderInventory(); playTone(500, 'sine', 0.15); }
+
+        const canvas = document.getElementById('confetti-canvas'), ctx = canvas.getContext('2d');
+        let confettiParticles = [];
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resizeCanvas); resizeCanvas();
+
+        function triggerConfetti() {
+            confettiParticles = [];
+            for (let i = 0; i < 90; i++) {
+                confettiParticles.push({
+                    x: Math.random() * canvas.width, y: Math.random() * canvas.height - canvas.height, size: Math.random() * 5 + 4,
+                    color: ['#eb4b4b', '#ffae00', '#de9b35', '#fff', '#d32ce6'][Math.floor(Math.random() * 5)],
+                    speedX: Math.random() * 4 - 2, speedY: Math.random() * 4 + 4, rotation: Math.random() * 360, rotationSpeed: Math.random() * 4 - 2
+                });
+            }
+            animateConfetti();
+        }
+
+        function animateConfetti() {
+            if (confettiParticles.length === 0) return; ctx.clearRect(0, 0, canvas.width, canvas.height);
+            confettiParticles.forEach((p, idx) => {
+                p.y += p.speedY; p.x += p.speedX; p.rotation += p.rotationSpeed;
+                ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.rotation * Math.PI) / 180); ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size); ctx.restore();
+                if (p.y > canvas.height) confettiParticles.splice(idx, 1);
+            });
+            requestAnimationFrame(animateConfetti);
+        }
+        window.onload = init;
+    </script>
+</body>
+</html>
